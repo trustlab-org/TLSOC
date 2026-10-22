@@ -34,7 +34,8 @@
 ## Overview
 
 **TLSOC** is a free and open-source Security Operations Platform. It provides agentless
-log collection from Linux servers, TLS-secured transport through Apache Kafka,
+log collection from Linux servers, collection from cloud and SaaS platforms such as
+Google Workspace through [Siphon](https://github.com/trustlab-org/siphon), TLS-secured transport through Apache Kafka,
 parsing and normalization into
 [Elastic Common Schema (ECS)](https://www.elastic.co/guide/en/ecs/current/index.html)
 events, centralized storage and dashboards on the Elastic Stack, and automated daily
@@ -70,6 +71,9 @@ vendor lock-in.
 - **Agentless log collection** — monitored servers forward logs with native Linux
   tooling (`rsyslog` + `omkafka`); nothing custom is installed or left running on
   source machines.
+- **Cloud and SaaS sources**: audit logs from platforms such as Google Workspace
+  are pulled through their official APIs by [Siphon](https://github.com/trustlab-org/siphon), with read-only access and
+  nothing installed on the platform side.
 - **TLS-secured pipeline** — communication across the monitoring pipeline is
   encrypted, signed by a locally generated certificate authority you control.
 - **ECS-normalized events** — one schema across all sources, interoperable with the
@@ -85,7 +89,7 @@ vendor lock-in.
 
 TLSOC is intentionally built **on top of** established open-source infrastructure
 rather than replacing it. Instead of reimplementing mature technologies such as
-Kafka, Elasticsearch, Kibana, or Logstash, TLSOC integrates them into a cohesive
+Kafka, Bento, Elasticsearch, Kibana, or Logstash, TLSOC integrates them into a cohesive
 platform and focuses development effort on the problems they do not solve out of
 the box:
 
@@ -97,6 +101,7 @@ the box:
 | Logstash — indexing pipeline | Rule validation, golden-sample testing, and parser management tooling |
 | rsyslog — native log forwarding | Declarative executive reporting framework |
 | Redis — transaction state | Ecosystem standards, operational workflows, and (planned) ML analytics |
+| Bento, stream processing | Siphon: cloud and SaaS log collection with per-source cursors, late-event handling, and deduplication |
 
 This approach reuses production-tested infrastructure, stays compatible with the
 Elastic ecosystem, reduces maintenance burden, and lets organizations upgrade the
@@ -114,6 +119,7 @@ operational overhead. The full rationale, design trade-offs, and comparisons
 |---|---|
 | **Deploy TLSOC** (the TLS-secured stack) | [TLSOCDockerDeploy](https://github.com/sankettaware16/TLSOCDockerDeploy) |
 | **Develop parser rules** or run the parsing engine | [foss-soc-engine](https://github.com/sankettaware16/foss-soc-engine) |
+| **Collect logs from cloud and SaaS platforms** (Google Workspace, AWS) | [siphon](https://github.com/trustlab-org/siphon) |
 | **Generate executive reports** | [tlsoc-reporting-framework](https://github.com/sankettaware16/tlsoc-reporting-framework) |
 | **Detect anomalies with ML** (behavioral detection) | [tlsoc-machinelearning-framework](https://github.com/sankettaware16/tlsoc-machinelearning-framework) |
 | **Read platform documentation** | [tlsoc](https://github.com/sankettaware16/tlsoc) (this repository) |
@@ -124,6 +130,7 @@ operational overhead. The full rationale, design trade-offs, and comparisons
 |---|---|---|
 | [tlsoc](https://github.com/sankettaware16/tlsoc) | Ecosystem home — documentation, architecture, roadmap, standards | Active |
 | [foss-soc-engine](https://github.com/sankettaware16/foss-soc-engine) | High-performance polymorphic log parsing and ECS normalization engine (Kafka consumer, Web UI, Kibana plugin) | Active |
+| [siphon](https://github.com/trustlab-org/siphon) | Lightweight, single-binary collector built on Bento that pulls audit logs from cloud and SaaS platforms into Kafka | Active |
 | [TLSOCDockerDeploy](https://github.com/sankettaware16/TLSOCDockerDeploy) | One-command, TLS-secured core stack: Kafka + Logstash + Elasticsearch + Kibana via Docker Compose, plus agentless source onboarding | Active |
 | [tlsoc-reporting-framework](https://github.com/sankettaware16/tlsoc-reporting-framework) | Declarative, template-driven executive reporting over ELK data — daily HTML/PDF reports with KPIs, charts, and insights | Active |
 | [tlsoc-machinelearning-framework](https://github.com/sankettaware16/tlsoc-machinelearning-framework) | Self-learning behavioral anomaly detection over ECS events — learns each environment's normal and alerts on deviation, zero threshold tuning (web_recon directory-enumeration detector shipping) | Testing |
@@ -138,6 +145,14 @@ operational overhead. The full rationale, design trade-offs, and comparisons
 flowchart LR
     subgraph sources["Monitored servers"]
         RS["rsyslog + omkafka<br/>(agentless forwarding)"]
+    end
+
+    subgraph cloud["Cloud and SaaS platforms"]
+        API["Google Workspace, AWS<br/>(official APIs)"]
+    end
+
+    subgraph siphon["Siphon"]
+        SIP["Cloud and SaaS collector<br/>(cursors, deduplication)"]
     end
 
     subgraph deploy["TLSOC Docker Deploy — TLS-secured core stack"]
@@ -156,6 +171,8 @@ flowchart LR
     end
 
     RS -- "TLS :9094" --> K
+    API -- "read-only API polling" --> SIP
+    SIP -- "same envelope" --> K
     K -- "raw log envelopes" --> ENG
     ENG -- "ECS NDJSON" --> LS
     LS --> ES
@@ -168,6 +185,8 @@ flowchart LR
 1. A monitored server forwards each log line to Kafka using `rsyslog` + `omkafka`,
    wrapped in a small JSON envelope that carries routing metadata
    (`org`, `dept`, `env`, `server`, `source_program`).
+   Cloud and SaaS sources reach Kafka through **Siphon**, which polls each platform's
+   audit-log API and produces events in the same envelope.
 2. **TLSOC Engine** consumes the Kafka topics, routes every line to the correct YAML
    parsing rule, normalizes it into an ECS-compliant JSON event (with GeoIP/ASN
    enrichment and accurate event timestamps), and writes NDJSON output files.
@@ -190,6 +209,7 @@ A complete deployment takes four steps. The full walkthrough with commands is in
 |---|---|---|
 | 1. Deploy the core stack | Bring up TLS-secured Kafka, Logstash, Elasticsearch, and Kibana with Docker Compose on one server | [TLSOCDockerDeploy](https://github.com/sankettaware16/TLSOCDockerDeploy) |
 | 2. Onboard log sources | Run the one-command onboarding script on each Linux server you want to monitor | [TLSOC Docker Deploy — onboarding](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/onboarding.md) |
+| 2b. Collect cloud and SaaS logs (optional) | Run Siphon with read-only API access to platforms such as Google Workspace | [siphon](https://github.com/trustlab-org/siphon) |
 | 3. Start the parsing engine | Install TLSOC Engine, map your sources to parsing rules, run it as a systemd service | [foss-soc-engine](https://github.com/sankettaware16/foss-soc-engine) |
 | 4. Enable reporting | Configure TLSOC Reporting and schedule the daily report cron job | [tlsoc-reporting-framework](https://github.com/sankettaware16/tlsoc-reporting-framework) |
 
@@ -206,6 +226,7 @@ today:
 | Proxy | ✅ Squid |
 | Security tooling | ✅ ModSecurity (WAF) · ✅ Suricata (IDS) · ✅ File integrity monitoring |
 | Vulnerability scanners | ✅ OpenVAS · ✅ Nessus |
+| Cloud and SaaS (via [Siphon](https://github.com/trustlab-org/siphon)) | ✅ Google Workspace (14 log types, including login, admin, Drive, Gmail, and OAuth tokens) · 🚧 AWS CloudTrail |
 
 Any other source — syslog, JSON, or XML — can be added as a **YAML rule with no
 code**; the engine even documents an
@@ -239,12 +260,14 @@ The full roadmap, with detail per item, is in [docs/roadmap.md](docs/roadmap.md)
 - ✅ TLS-secured deployment stack (TLSOCDockerDeploy)
 - ✅ Reporting framework (tlsoc-reporting-framework)
 - ✅ Agentless onboarding
+- ✅ Cloud and SaaS collection with Siphon (Google Workspace)
 
 **In progress**
 
 - 🚧 Unified ecosystem documentation and branding
 - 🚧 Versioned, changelog-backed releases
 - 🚧 Expanded parser rule library
+- 🚧 AWS CloudTrail source in Siphon
 
 **Planned**
 
@@ -253,6 +276,7 @@ The full roadmap, with detail per item, is in [docs/roadmap.md](docs/roadmap.md)
 - Community parser plugins (tlsoc-parser-plugins)
 - Examples and labs (tlsoc-examples)
 - Threat-intel and workflow integrations (tlsoc-integrations)
+- More Siphon sources: Microsoft 365, Entra ID, Okta, and Google Alert Center
 
 ## Contributing
 
@@ -285,5 +309,6 @@ ecosystem unless a repository states otherwise.
   <a href="https://github.com/sankettaware16/tlsoc">TLSOC</a> •
   <a href="https://github.com/sankettaware16/foss-soc-engine">Engine</a> •
   <a href="https://github.com/sankettaware16/TLSOCDockerDeploy">Deploy</a> •
-  <a href="https://github.com/sankettaware16/tlsoc-reporting-framework">Reporting</a>
+  <a href="https://github.com/sankettaware16/tlsoc-reporting-framework">Reporting</a> •
+  <a href="https://github.com/trustlab-org/siphon">Siphon</a>
 </p>
