@@ -23,14 +23,20 @@ On the central server, deploy TLS-secured Kafka + Logstash + Elasticsearch + Kib
 cd /opt
 sudo git clone https://github.com/sankettaware16/TLSOCDockerDeploy.git
 cd TLSOCDockerDeploy
-./certs/generate-certs.sh <server-ip>
-sudo cp .env.example .env      # then edit: set the server IP
 sudo chmod +x install.sh
 sudo ./install.sh
 ```
 
-After first start, reset the built-in Elastic passwords and restart the stack —
-follow [TLSOC Docker Deploy — Installation](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/installation.md).
+The installer does everything: it generates the passwords and TLS certificates,
+applies log retention (180 days by default, per the CERT-In Directions) and
+index templates, starts the stack, and installs the *TLSOC - SOC Overview*
+dashboard and health monitoring. At the end it prints the Kibana address and the
+generated `elastic` password. There are no manual password or Kibana setup
+steps. If the dashboard step did not finish (for example Kibana was still
+starting), run `sudo ./dashboards.sh` — see
+[TLSOC Docker Deploy — Dashboards and monitoring](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/dashboards.md).
+Before relying on the default retention, check that your disk can hold it:
+[Data retention and storage](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/retention-and-storage.md).
 
 Kibana is then available at `https://<server-ip>:5601`.
 
