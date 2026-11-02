@@ -102,7 +102,7 @@ Schedule it daily and (optionally) enable email delivery:
 | Logs arriving in Kafka | `docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic <topic>` |
 | Engine parsing healthily | `logs/stats.json` (EPS, errors) or the Web UI Monitor |
 | Unparsed lines | `logs/dlq/<source>.json` in the engine directory |
-| Events in Elasticsearch | Kibana → Discover, index pattern `all-logs-*` |
+| Events in Elasticsearch | Kibana → Discover, index pattern `fosstlsoc-logs-*` |
 | Reports generated | `output/html/` and `output/pdf/` in TLSOC Reporting |
 
 ## Where to go next
