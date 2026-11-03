@@ -169,8 +169,8 @@ flowchart TB
 
 Scaling out: the engine's workers form a single Kafka consumer group, so you scale
 by adding CPU cores on one machine or by running the engine on several machines
-with the same `group_id`. Kafka topic partition counts set the upper bound on
-parallelism (one partition is consumed by exactly one worker).
+with the same `group_id`. The partitions of the per-source topics set the upper
+bound on parallelism (one partition is consumed by exactly one worker).
 
 ## Communication and ports
 
@@ -187,40 +187,58 @@ parallelism (one partition is consumed by exactly one worker).
 
 ## Kafka flow
 
+Every log source has its own topic, named after the source: `tlsoc.logs.<source>`.
+The same name is the rsyslog tag, the engine rule's `source:` and the index name
+part (`fosstlsoc-logs-<source>-*`), so topics and parsers connect by themselves.
+
 ```mermaid
 flowchart LR
     subgraph producers["Producers"]
-        P1["Server A — rsyslog<br/>key = %programname%"]
-        P2["Server B — rsyslog<br/>key = %programname%"]
+        P1["Server A — rsyslog<br/>tags auth, nginx"]
+        P2["Server B — rsyslog<br/>tags auth, postfix"]
+        P3["Siphon<br/>okta"]
     end
-    subgraph kafka["Kafka topic (e.g. cse_logs, N partitions)"]
-        T1["partition 0"]
-        T2["partition 1"]
-        T3["partition …"]
+    subgraph kafka["Kafka — one topic per source"]
+        T1["tlsoc.logs.auth"]
+        T2["tlsoc.logs.nginx"]
+        T3["tlsoc.logs.postfix"]
+        T4["tlsoc.logs.okta"]
     end
-    subgraph group["Consumer group: soc-parser-group"]
+    subgraph group["Consumer group: soc-parser-group<br/>(subscribes to tlsoc.logs.*)"]
         C1["engine worker 1"]
         C2["engine worker 2"]
         C3["engine worker …"]
     end
     P1 --> T1
     P1 --> T2
+    P2 --> T1
     P2 --> T3
+    P3 --> T4
     T1 --> C1
     T2 --> C2
     T3 --> C3
+    T4 --> C1
 ```
 
 Key properties:
 
-- Messages are **keyed by source program**, so all lines from one source land in one
-  partition — preserving order, which stateful (multi-line transaction) parsing
-  requires.
+- **No topic configuration.** TLSOCDockerDeploy creates the standard topics
+  (partitions sized per source); a new source's topic is created on its first
+  line, and the engine picks it up within ~30 s. The engine reads a never-seen
+  small topic from its first message, so a new source's first lines are kept.
+- **Sources are isolated.** A burst from one source (e.g. squid) does not delay the
+  others: measured, sso events waited up to 24 s behind a 400k-line squid burst on
+  one shared topic, and at most 1.4 s on their own topic.
+- **Parallelism.** Within a topic, onboarding spreads lines over all partitions
+  (`partitions.auto`), so several workers share a busy source. Partitions cap
+  parallelism: one partition is consumed by exactly one worker. Sources whose
+  rule correlates multi-line transactions (postfix) use one partition to keep
+  order.
 - Offsets are committed **only after events are durably written to disk** by the
   engine (at-least-once delivery: duplicates are possible after a crash, silent
   loss is not).
-- Partition count caps parallelism: provision at least as many partitions per topic
-  as total engine workers.
+- Older single-topic deployments keep working: the engine routes by
+  `meta.source_program` (and `program_mapping`) on any topic it consumes.
 
 ## Parser pipeline
 
@@ -229,7 +247,7 @@ Inside TLSOC Engine, every message passes through this pipeline
 
 ```mermaid
 flowchart TB
-    IN["Kafka message<br/>{meta, raw}"] --> ROUTE["Route: meta.source_program<br/>→ program_mapping → rule (or rule chain)"]
+    IN["Kafka message<br/>{meta, raw} or plain line"] --> ROUTE["Route by source name<br/>program_mapping → rule source/alias → topic name"]
     ROUTE --> STRAT{"Rule strategy"}
     STRAT -->|stateless| RX["Single regex"]
     STRAT -->|multi_match| MM["Pattern list<br/>(prematch gate → regex)"]

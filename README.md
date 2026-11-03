@@ -187,8 +187,8 @@ flowchart LR
    (`org`, `dept`, `env`, `server`, `source_program`).
    Cloud and SaaS sources reach Kafka through **Siphon**, which polls each platform's
    audit-log API and produces events in the same envelope.
-2. **TLSOC Engine** consumes the Kafka topics, routes every line to the correct YAML
-   parsing rule, normalizes it into an ECS-compliant JSON event (with GeoIP/ASN
+2. **TLSOC Engine** consumes the per-source Kafka topics (`tlsoc.logs.<source>`),
+   routes every line to the YAML parsing rule that declares that source, normalizes it into an ECS-compliant JSON event (with GeoIP/ASN
    enrichment and accurate event timestamps), and writes NDJSON output files.
 3. **Logstash** tails the engine's output and indexes the events into **Elasticsearch**
    over TLS.

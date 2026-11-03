@@ -69,9 +69,11 @@ changes beyond `group_id` reuse.
 
 ### How does TLSOC scale?
 
-Kafka topic partitions are the unit of parallelism. The engine runs one worker per
-CPU core by default, all in one consumer group; add cores or machines to scale.
-Provision at least as many partitions per topic as total workers.
+Kafka topic partitions are the unit of parallelism. Each log source has its own
+topic (`tlsoc.logs.<source>`), so a busy source can be given more partitions
+(TLSOCDockerDeploy `kafka/topics.conf`) and a burst from one source does not delay
+the others. Set the engine's `runtime.workers` (`auto` = one per CPU core); all
+workers share one consumer group; add cores or machines to scale.
 
 ### Is data lost if a component goes down?
 

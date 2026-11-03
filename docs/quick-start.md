@@ -51,6 +51,10 @@ curl -fsSL https://raw.githubusercontent.com/sankettaware16/TLSOCDockerDeploy/ma
 sudo bash tlsoc-onboard.sh
 ```
 
+There is no topic to choose: each log source goes to its own Kafka topic named
+after it (`auth` → `tlsoc.logs.auth`), and the engine finds the parser by the
+same name. How names, topics and parsers fit together:
+[Log sources and Kafka topics](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/sources-and-topics.md).
 Manual template and non-interactive rollout:
 [TLSOC Docker Deploy — Onboarding](https://github.com/sankettaware16/TLSOCDockerDeploy/blob/main/docs/onboarding.md).
 
@@ -69,9 +73,9 @@ export MAXMIND_LICENSE_KEY=<your-key>   # optional, enables GeoIP/ASN enrichment
 
 Then:
 
-1. Edit `config.yaml` — point `kafka.bootstrap_servers` and `input_topic` at your
-   stack, and map each onboarded source program to a parsing rule in
-   `program_mapping`.
+1. Edit `config.yaml` — point `kafka.bootstrap_servers` at your stack. Nothing
+   else: the engine reads every per-source topic (`tlsoc.logs.<source>`) and finds
+   each source's parser by name.
 2. Validate before going live: `python3 preflight.py` (checks config, rules, ECS
    fields, Kafka reachability, topics, Redis, and partition counts in one command).
 3. Run as a service: `sudo ./setup_service.sh`, then
@@ -105,7 +109,8 @@ Schedule it daily and (optionally) enable email delivery:
 
 | Check | Command / location |
 |---|---|
-| Logs arriving in Kafka | `docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic <topic>` |
+| Every source at a glance (topic, rate, lag, parser) | `python3 sources.py` in the engine directory |
+| Logs arriving in Kafka | `docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic tlsoc.logs.<source>` |
 | Engine parsing healthily | `logs/stats.json` (EPS, errors) or the Web UI Monitor |
 | Unparsed lines | `logs/dlq/<source>.json` in the engine directory |
 | Events in Elasticsearch | Kibana → Discover, index pattern `fosstlsoc-logs-*` |
