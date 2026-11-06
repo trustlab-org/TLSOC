@@ -222,9 +222,10 @@ flowchart LR
 
 Key properties:
 
-- **No topic configuration.** TLSOCDockerDeploy creates the standard topics
-  (partitions sized per source); a new source's topic is created on its first
-  line, and the engine picks it up within ~30 s. The engine reads a never-seen
+- **No topic configuration.** No topic is created in advance: a source's topic
+  is created on its first line, so Kafka holds only the sources a site really
+  has, however many parsers exist. The engine picks it up within ~30 s, and a
+  TLSOCDockerDeploy cron job gives busy sources more partitions. The engine reads a never-seen
   small topic from its first message, so a new source's first lines are kept.
 - **Sources are isolated.** A burst from one source (e.g. squid) does not delay the
   others: measured, sso events waited up to 24 s behind a 400k-line squid burst on

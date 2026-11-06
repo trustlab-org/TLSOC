@@ -70,8 +70,9 @@ changes beyond `group_id` reuse.
 ### How does TLSOC scale?
 
 Kafka topic partitions are the unit of parallelism. Each log source has its own
-topic (`tlsoc.logs.<source>`), so a busy source can be given more partitions
-(TLSOCDockerDeploy `kafka/topics.conf`) and a burst from one source does not delay
+topic (`tlsoc.logs.<source>`, created by its first line), so a busy source can
+be given more partitions (TLSOCDockerDeploy `kafka/topics.conf`, applied
+automatically) and a burst from one source does not delay
 the others. Set the engine's `runtime.workers` (`auto` = one per CPU core); all
 workers share one consumer group; add cores or machines to scale.
 
