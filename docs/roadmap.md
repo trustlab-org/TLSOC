@@ -30,7 +30,9 @@ Shipped and actively maintained:
   delivery verification.
 - **TLSOC Reporting** — declarative report framework (YAML reports × YAML
   datasources), signature-based security analysis, offline preview backend,
-  HTML/PDF rendering chain, daily cron automation, and email delivery.
+  HTML/PDF rendering chain, daily cron automation, and email delivery. Seven
+  daily reports: web traffic, mail flow, mail-gateway SPF, DNS resolver, proxy,
+  Wi-Fi (RADIUS) authentication, and SSO/LDAP authentication.
 
 ## Next Release
 
