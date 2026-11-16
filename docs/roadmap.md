@@ -11,8 +11,8 @@ At a glance:
 | Status | Items |
 |---|---|
 | ✅ Shipped | foss-soc-engine · TLSOCDockerDeploy · tlsoc-reporting-framework · agentless onboarding |
-| 🚧 In progress | Ecosystem documentation & branding · versioned releases · parser library growth |
-| Planned | tlsoc-dashboard · tlsoc-ml · tlsoc-parser-plugins · tlsoc-examples · tlsoc-integrations |
+| 🚧 In progress | Ecosystem documentation & branding · versioned releases · parser library growth · tlsoc-machinelearning-framework (testing) |
+| Planned | tlsoc-dashboard · tlsoc-parser-plugins · tlsoc-examples · tlsoc-integrations |
 
 ## Current
 
@@ -40,6 +40,12 @@ Shipped and actively maintained:
 - Tagged, changelog-backed releases for every repository.
 - Expanded parser rule library and golden-sample coverage in TLSOC Engine.
 - Screenshot and demo assets for the ecosystem home.
+- **TLSOC ML** (tlsoc-machinelearning-framework), in testing — self-learning
+  detection over the engine's web-server events: directory-enumeration and
+  sensitive-file exposure alerts (`web_recon`), bot detection (watch-only for
+  now), an analyst console with verification and triage, and an alert shipper
+  into Elasticsearch. Each change is judged by a pre-registered 7-day live
+  measurement before it is called ready.
 
 ## Future
 
@@ -56,9 +62,9 @@ Shipped and actively maintained:
 
 ## Long Term Vision
 
-- **tlsoc-ml** — machine-learning anomaly detection over normalized ECS events
-  (behavioral baselines per source, alert scoring), feeding detections back into
-  dashboards and reports.
+- **TLSOC ML** — more learned detectors beyond web traffic (behavioral
+  baselines per source, alert scoring), feeding detections back into dashboards
+  and reports.
 - Detection-as-code: a shared, versioned detection rule format spanning the
   engine, dashboards, and reports.
 - Turn-key appliance images for the full platform.

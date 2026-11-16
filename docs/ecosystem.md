@@ -18,9 +18,10 @@ that new repositories can join the ecosystem without inventing anything.
   | TLSOC Engine | `foss-soc-engine` |
   | TLSOC Docker Deploy | `TLSOCDockerDeploy` |
   | TLSOC Reporting | `tlsoc-reporting-framework` |
+  | TLSOC ML | `tlsoc-machinelearning-framework` |
 
 - **Future repositories** are named lowercase-with-hyphens, prefixed `tlsoc-`:
-  `tlsoc-dashboard`, `tlsoc-ml`, `tlsoc-parser-plugins`, `tlsoc-examples`,
+  `tlsoc-dashboard`, `tlsoc-parser-plugins`, `tlsoc-examples`,
   `tlsoc-integrations`.
 - Repository tables and links always show the real repository name; prose uses
   the component name.

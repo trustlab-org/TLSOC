@@ -133,7 +133,7 @@ operational overhead. The full rationale, design trade-offs, and comparisons
 | [siphon](https://github.com/trustlab-org/siphon) | Lightweight, single-binary collector built on Bento that pulls audit logs from cloud and SaaS platforms into Kafka | Active |
 | [TLSOCDockerDeploy](https://github.com/sankettaware16/TLSOCDockerDeploy) | One-command, TLS-secured core stack: Kafka + Logstash + Elasticsearch + Kibana via Docker Compose, plus agentless source onboarding | Active |
 | [tlsoc-reporting-framework](https://github.com/sankettaware16/tlsoc-reporting-framework) | Declarative, template-driven executive reporting over ELK data — daily HTML/PDF reports with KPIs, charts, and insights | Active |
-| [tlsoc-machinelearning-framework](https://github.com/sankettaware16/tlsoc-machinelearning-framework) | Self-learning behavioral anomaly detection over ECS events — learns each environment's normal and alerts on deviation, zero threshold tuning (web_recon directory-enumeration detector shipping) | Testing |
+| [tlsoc-machinelearning-framework](https://github.com/sankettaware16/tlsoc-machinelearning-framework) | Self-learning behavioral detection over the engine's ECS web-server events — learns each environment's normal and alerts on deviation, zero threshold tuning. Ships `web_recon` (directory enumeration and sensitive-file exposure alerts), `bot_detection` (watch-only), an analyst console, and an alert shipper into Elasticsearch | Testing |
 | tlsoc-dashboard | Unified operational dashboard for the platform | Planned |
 | tlsoc-parser-plugins | Community-contributed parser rule packs for additional log sources | Planned |
 | tlsoc-examples | End-to-end example deployments, sample configurations, and labs | Planned |
@@ -170,6 +170,10 @@ flowchart LR
         REP["Report generator<br/>(HTML / PDF + email delivery)"]
     end
 
+    subgraph ml["TLSOC ML"]
+        MLD["Behavioral detection<br/>(learned baselines, analyst console)"]
+    end
+
     RS -- "TLS :9094" --> K
     API -- "read-only API polling" --> SIP
     SIP -- "same envelope" --> K
@@ -178,6 +182,8 @@ flowchart LR
     LS --> ES
     ES --> KB
     ES -- "aggregation queries" --> REP
+    ENG -- "ECS NDJSON (web logs)" --> MLD
+    MLD -- "alerts" --> ES
 ```
 
 **The data journey:**
@@ -196,6 +202,10 @@ flowchart LR
    plugin for managing engine rules from inside Kibana.
 5. **TLSOC Reporting** queries Elasticsearch on a schedule and renders daily HTML/PDF
    executive reports, delivered by its email automation component.
+6. **TLSOC ML** reads the engine's web-server output, learns what is normal for
+   that environment, and raises alerts with their evidence (for example a scan
+   that downloaded a `.git` folder or a `.env` file). Alerts are kept as files
+   and can be shipped into Elasticsearch for Kibana.
 
 Detailed diagrams (component, deployment, Kafka flow, parser pipeline, reporting
 pipeline) live in [docs/architecture.md](docs/architecture.md).
@@ -268,11 +278,11 @@ The full roadmap, with detail per item, is in [docs/roadmap.md](docs/roadmap.md)
 - 🚧 Versioned, changelog-backed releases
 - 🚧 Expanded parser rule library
 - 🚧 AWS CloudTrail source in Siphon
+- 🚧 Machine-learning detection (tlsoc-machinelearning-framework), in testing
 
 **Planned**
 
 - Unified dashboard (tlsoc-dashboard)
-- Machine-learning anomaly detection (tlsoc-ml)
 - Community parser plugins (tlsoc-parser-plugins)
 - Examples and labs (tlsoc-examples)
 - Threat-intel and workflow integrations (tlsoc-integrations)
